@@ -1,0 +1,755 @@
+/* 
+
+Author: 
+	Dr. Karsten K?tter
+	mail@karstenkoetter.de
+
+
+Homepage:
+	www.KarstenKoetter.de/Lyapunov.html
+			
+
+Requirements:	
+	java >~ 1.4 (?)
+		Sun JDK 1.4.2.05	verified	
+
+
+History:
+	2004-07: started 
+		
+*/
+
+package awtLyapunov;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.text.*;
+
+class LyapColor
+{	private double m_minLyapunov, m_maxLyapunov;
+	private int m_NumberOfColors;
+	private Color m_LyapunovColor[];
+	
+
+	LyapColor()
+	{
+			
+	}
+	
+	public void setColorPalette(int PaletteID)
+	{	
+	}
+	
+	public void setColorPalette(int PaletteID, double minLyapunov, double maxLyapunov)
+	{
+	}
+	
+	private int getIndex(double Lyapunov)
+	{	return 0;
+	}
+	
+	public Color getLyapColor(double Lyapunov)
+	{	int index = getIndex(Lyapunov);
+		
+		if (index < 0)
+			index = 0;
+		else if (index >= m_NumberOfColors)
+			index = m_NumberOfColors -1 ;
+			
+		return m_LyapunovColor[index];
+	}
+}
+
+
+public class LyapRun extends Frame implements Runnable, MouseListener, MouseMotionListener
+{
+	static protected Thread m_myThread;
+	static protected LyapRun m_LyapRunWindow;
+
+
+	public static void main(String[] args)
+	{	boolean correctInputParamters = false;
+
+		m_LyapRunWindow = new LyapRun();
+		m_LyapRunWindow.setUndecorated(false); //  Java >~ 1.4
+		m_LyapRunWindow.setVisible(true);
+		m_LyapRunWindow.setResizable(false);
+
+		m_LyapRunWindow.startAnimation();
+	}
+
+
+	private class DebugInfo
+	{
+		private Runtime m_Runtime;
+		private boolean m_verbose;
+		private long m_MByte = 1048576;
+
+		DebugInfo(boolean verbose)
+		{
+			m_verbose = verbose;
+			if (verbose)  m_Runtime = Runtime.getRuntime();
+		}
+
+		public void _out(String Output)
+		{
+			if (!m_verbose)  return;
+
+			DecimalFormat p = new DecimalFormat("##.###");
+			System.out.println( Output + ", Memory: "
+					+ p.format((double) m_Runtime.freeMemory() / m_MByte) + " / "
+					+ p.format((double) m_Runtime.totalMemory() / m_MByte) + " MB. (free/total)");
+		}
+	}
+
+	private DebugInfo m_DebugInfo = new DebugInfo(true);
+	private Runtime m_Runtime = Runtime.getRuntime();
+	private long m_minFreeMemory = 100000;
+	private LyapCalc m_LyapCalc;
+	private LyapCalc[] m_LyapCalcHistory;
+	private boolean m_savedLyapCalc;
+	private int m_LyapCalcAbsoluteMax = 100;
+	private int m_LyapCalcCurrentCounter;
+	private int m_LyapCalcCurrentMax;
+	private int m_silentIterations = 10;
+
+	private double m_tmpLyap[][];
+
+	private int m_SizeX = 500, m_SizeY = 500;
+
+	private int m_P1_X, m_P1_Y, m_P2_X, m_P2_Y, m_P3_X, m_P3_Y;
+
+	private Graphics m_ScreenLyapunovGraphics;
+	private Image m_ScreenLyapunovImage;
+	private Insets m_WindowBorder;
+	private boolean m_needRepaint;
+	private boolean m_needCalculation;
+	private boolean m_needRestart;
+	private int m_ButtonCount, m_ColorPalette;
+
+	private LyapControl m_LyapControlWindow;
+
+
+	public LyapRun()
+	{
+		super.setTitle("Lyapunov Display");
+
+		addMouseListener(this);
+		addMouseMotionListener(this);
+		
+		addWindowListener(new WindowAdapter()
+		{	public void windowClosing(WindowEvent e)
+			{	System.exit(0);
+			}
+		});
+
+		m_needCalculation = false;
+		m_needRestart = false;
+		m_savedLyapCalc = true;
+		m_ButtonCount = 0;
+		m_ColorPalette = 1;
+	}
+
+
+	private void init()
+	{
+		m_LyapCalcCurrentCounter = 0;
+		m_LyapCalcCurrentMax = 0;
+		m_LyapCalcHistory = new LyapCalc[m_LyapCalcAbsoluteMax];
+		m_LyapCalc = new LyapCalc();
+
+		m_ScreenLyapunovImage = createImage(m_SizeX, m_SizeY);
+		m_ScreenLyapunovGraphics = m_ScreenLyapunovImage.getGraphics();
+
+		m_WindowBorder = getInsets();
+		m_LyapRunWindow.setSize(m_SizeX + m_WindowBorder.left + m_WindowBorder.right, m_SizeY + m_WindowBorder.top + m_WindowBorder.bottom);
+		
+		
+		if (m_LyapControlWindow == null)
+			m_LyapControlWindow = new LyapControl(this);
+		String iP[] = m_LyapCalc.getInitialParameters();
+
+		m_LyapControlWindow.setAllCalcParameters(new Double(iP[0]).doubleValue(), new Double(iP[1]).doubleValue(),
+												 new Double(iP[2]).doubleValue(), new Double(iP[3]).doubleValue(),
+												 new Integer(iP[4]).intValue(),   new Integer(iP[5]).intValue(),
+												 new Double(iP[6]).doubleValue(), iP[7],
+											     new Double(iP[8]).doubleValue(), new Double(iP[9]).doubleValue(),
+											     iP[10], iP [11]);
+		m_LyapControlWindow.show();
+	}
+
+
+	public void paint(Graphics g) // ?berladene Methode aus java.awt.Container
+	{
+		// Ensure that everything is present and in a proper state
+		if (m_LyapCalc == null || !m_LyapCalc.isInitialized() || m_ScreenLyapunovImage == null)
+		{
+			return;
+		}
+
+		
+		
+		// redraw a new Lyapunov picture only if we are still calculating	
+		if (m_needRepaint == true)
+		{	int x, y;
+			m_tmpLyap = m_LyapCalc.getLyapExpo();
+
+			for (x = 0; x < m_SizeX; x++)
+			{	for (y = 0; y < m_SizeY; y++)
+				{	m_ScreenLyapunovGraphics.setColor(getLyapunovColor(m_tmpLyap[x][y]));
+					m_ScreenLyapunovGraphics.fillRect(x, m_SizeY - y - 1, 1, 1);
+				}
+			}
+			m_needRepaint = false;
+		}
+
+
+		g.drawImage(m_ScreenLyapunovImage, m_WindowBorder.left, m_WindowBorder.top, this);
+
+		if (m_ButtonCount > 0)
+		{	int dX, dY;
+			double dP21X = m_P1_X - m_P2_X, dP21Y = m_P1_Y - m_P2_Y;
+
+			double length21 = Math.sqrt(dP21X * dP21X + dP21Y * dP21Y);
+
+			switch (m_ButtonCount)
+			{
+				case 1 :
+					dX = - (int) (m_SizeX / length21 * dP21Y);
+					dY = (int) (m_SizeX / length21 * dP21X);
+
+					g.setColor(Color.WHITE);
+					g.drawLine(m_P1_X, m_P1_Y, m_P2_X, m_P2_Y);
+					g.drawLine(m_P1_X, m_P1_Y, m_P1_X + dX, m_P1_Y + dY);
+					g.drawLine(m_P2_X, m_P2_Y, m_P2_X + dX, m_P2_Y + dY);
+
+					g.setColor(Color.GRAY);
+					g.drawLine((m_P1_X + m_P2_X) / 2, (m_P1_Y + m_P2_Y) / 2, (m_P1_X + m_P2_X) / 2 + dX, (m_P1_Y + m_P2_Y) / 2 + dY);
+
+					break;
+				case 2 : // <- this is no bug!
+				case 3 :
+					double dP31X = m_P1_X - m_P3_X, dP31Y = m_P1_Y - m_P3_Y;
+
+					double length = (-dP31X * dP21Y + dP31Y * dP21X) / (length21 * length21);
+
+					dX = (int) (dP21Y * length);
+					dY = - (int) (dP21X * length);
+
+					g.setColor(Color.WHITE);
+					g.drawLine(m_P1_X, m_P1_Y, m_P2_X, m_P2_Y);
+					g.drawLine(m_P1_X, m_P1_Y, m_P1_X + dX, m_P1_Y + dY);
+					g.drawLine(m_P2_X, m_P2_Y, m_P2_X + dX, m_P2_Y + dY);
+					g.drawLine(m_P1_X + dX, m_P1_Y + dY, m_P2_X + dX, m_P2_Y + dY);
+
+					g.setColor(Color.GRAY);
+					g.drawLine((m_P1_X + m_P2_X) / 2, (m_P1_Y + m_P2_Y) / 2, (m_P1_X + m_P2_X) / 2 + dX, (m_P1_Y + m_P2_Y) / 2 + dY);
+					g.drawLine(m_P1_X + dX / 2, m_P1_Y + dY / 2, m_P2_X + dX / 2, m_P2_Y + dY / 2);
+					break;
+				default :
+			}
+		}
+	}
+
+
+	public void run() // ?berladene Methode aus java.lang.Runnable.
+	{
+		while (true)
+		{	if (isCalculating())
+				setCursor(Cursor.WAIT_CURSOR);
+			else
+				setCursor(Cursor.CROSSHAIR_CURSOR);
+			
+			if (m_needRestart == true)
+			{
+				boolean enoughMemory = false;
+
+				m_ButtonCount = 0;
+				m_needCalculation = true;
+
+				do
+				{	try
+					{	m_LyapCalc.reset();
+						if (m_Runtime.freeMemory() < m_minFreeMemory)
+							throw new java.lang.OutOfMemoryError();
+
+						m_LyapControlWindow.printLog("Start: resetted LyapCalc");
+						m_LyapControlWindow.printLog(m_LyapCalc.getStaticInfo() + "\n");
+
+						enoughMemory = true;
+					}
+					catch (java.lang.OutOfMemoryError e)
+					{
+						reduceHistory(4);
+						enoughMemory = false;
+					}
+				}
+				while (!enoughMemory);
+
+				m_needRestart = false;
+			}
+
+			if (m_needCalculation == true)
+			{	m_needRepaint = true;
+
+				m_LyapCalc.calcNext(m_silentIterations, true);
+				m_LyapControlWindow.printLog(m_LyapCalc.getDynamicInfo() + '\n');
+				m_savedLyapCalc = false;
+			}
+			else
+//			Calculation stopped	
+			{	
+				if ( m_ButtonCount == 0)
+					m_LyapControlWindow.setStartStopEnabled(true);
+
+//				Save picture automatically after each stop
+//				if (!isCalculating() && !m_savedLyapCalc)
+//					saveLyapunovCalculation();
+
+				if (!isCalculating())
+					m_LyapControlWindow.setSaveButtonEnabled(!m_savedLyapCalc);
+				else
+					m_LyapControlWindow.setSaveButtonEnabled(false);
+					
+				if ( (m_LyapCalcCurrentCounter > 1 || (m_LyapCalcCurrentCounter == 1 && !m_savedLyapCalc))
+					&& ( m_ButtonCount == 0 || m_ButtonCount >2) )
+					m_LyapControlWindow.setPreviousEnabled(true);
+				else 
+					m_LyapControlWindow.setPreviousEnabled(false);
+					
+				if (m_LyapCalcCurrentCounter < m_LyapCalcCurrentMax 
+					&& ( m_ButtonCount == 0 || m_ButtonCount >2))
+					m_LyapControlWindow.setNextEnabled(true);
+				else 
+					m_LyapControlWindow.setNextEnabled(false);
+				
+//				Absolutely nothing to do
+				if (m_ButtonCount == 0 || m_ButtonCount > 2)
+				{	try
+					{	Thread.sleep(100);
+					}
+					catch (InterruptedException e)
+					{
+					}
+				}
+//				Pane borders
+				else
+				{	try
+					{	Thread.sleep(10);
+					}
+					catch (InterruptedException e)
+					{
+					}
+				}
+			}
+
+			if (isEnabled())  repaint();
+		}
+	}
+
+
+	public boolean isCalculating()
+	{	return m_needCalculation || m_needRepaint; // test
+	}
+
+	public boolean isFinished()
+	{	return !m_needRepaint;
+	}
+
+
+	private void reduceHistory(int reduceNumber)
+	{	int i;
+
+		for ( i = 0; i < m_LyapCalcCurrentMax - reduceNumber; i++)
+		{
+			m_LyapControlWindow.printLog("Copy: " + i + " <- " + (i + reduceNumber)+"\n");
+			m_LyapCalcHistory[i] = (LyapCalc) m_LyapCalcHistory[i + reduceNumber].clone();
+		}
+		for (; i < m_LyapCalcCurrentMax; i++)
+		{
+			m_LyapControlWindow.printLog("Delete: " + i+"\n");
+			m_LyapCalcHistory[i] = (LyapCalc) null;
+		}
+
+		m_LyapCalcCurrentMax = m_LyapCalcCurrentMax - reduceNumber;
+		m_LyapCalcCurrentCounter = m_LyapCalcCurrentMax;
+		m_LyapCalcAbsoluteMax = m_LyapCalcCurrentMax;
+	}
+
+
+	public void stop()
+	{	m_needCalculation = false;
+		m_LyapCalcCurrentCounter = m_LyapCalcCurrentMax;
+		m_LyapControlWindow.printLog("Stop requested.\n");
+	}
+
+
+	public void start()
+	{	m_needRestart = true;
+	}
+
+
+	public void saveLyapunovCalculation()
+	{
+		boolean enoughMemory = false;
+		m_LyapControlWindow.setSaveButtonEnabled(false);
+
+		do
+		{	try
+			{	m_LyapCalcHistory[m_LyapCalcCurrentMax] = (LyapCalc) m_LyapCalc.clone();
+				if (m_Runtime.freeMemory() < m_minFreeMemory)
+					throw new java.lang.OutOfMemoryError();
+				m_savedLyapCalc = true;
+				m_LyapCalcCurrentMax++;
+				m_LyapCalcCurrentCounter = m_LyapCalcCurrentMax;
+				enoughMemory = true;
+			}
+			catch (java.lang.OutOfMemoryError e)
+			{	reduceHistory(4);
+				enoughMemory = false;
+			}
+		}
+		while (!enoughMemory);
+
+		m_LyapControlWindow.printLog("Lyapunov cached, Counter: " + m_LyapCalcCurrentCounter + 
+									 " CurrentMax: " + m_LyapCalcCurrentMax+"\n");
+	}
+
+	public void getPrevious()
+	{
+		if (m_savedLyapCalc)
+			m_LyapCalcCurrentCounter--;
+		if (m_LyapCalcCurrentCounter <= 1)
+		{
+			m_LyapCalcCurrentCounter = 1;
+			m_LyapControlWindow.setPreviousEnabled(false);
+		}
+
+		m_LyapCalc = (LyapCalc) m_LyapCalcHistory[m_LyapCalcCurrentCounter - 1].clone();
+
+		setRaster(m_LyapCalc.getSizeX(), m_LyapCalc.getSizeY());
+		m_needRepaint = true;
+		m_savedLyapCalc = true;
+		m_ButtonCount = 0;
+
+		setControlWindowParameters();
+
+		m_LyapControlWindow.printLog("Previous cached Lyapunov, Counter: " + m_LyapCalcCurrentCounter + 
+									 " Current: " + m_LyapCalcCurrentMax+"\n");
+	}
+
+
+	public void getNext()
+	{
+		m_LyapCalcCurrentCounter++;
+
+		if (m_LyapCalcCurrentCounter >= m_LyapCalcCurrentMax)
+		{
+			m_LyapCalcCurrentCounter = m_LyapCalcCurrentMax;
+			m_LyapControlWindow.setNextEnabled(false);
+		}
+
+		m_LyapCalc = (LyapCalc) m_LyapCalcHistory[m_LyapCalcCurrentCounter - 1].clone();
+
+		setRaster(m_LyapCalc.getSizeX(), m_LyapCalc.getSizeY());
+		m_needRepaint = true;
+		m_savedLyapCalc = true;
+		m_ButtonCount = 0;
+
+		setControlWindowParameters();
+
+		m_LyapControlWindow.printLog("Next cached Lyapunov, Counter: " + m_LyapCalcCurrentCounter + 
+									 " Current: " + m_LyapCalcCurrentMax+"\n");
+	}
+
+
+	public void setRaster(int PixelX, int PixelY)
+	{	
+		if (PixelX == m_SizeX && PixelY == m_SizeY && m_tmpLyap != null) return;
+		
+		m_SizeX = PixelX;
+		m_SizeY = PixelY;
+
+		m_tmpLyap = new double[PixelX][PixelY];
+		m_LyapCalc.setRaster(PixelX, PixelY);
+		m_ScreenLyapunovImage = createImage(m_SizeX, m_SizeY);
+		m_ScreenLyapunovGraphics = m_ScreenLyapunovImage.getGraphics();
+		m_LyapRunWindow.setSize(m_SizeX + m_WindowBorder.left + m_WindowBorder.right, m_SizeY + m_WindowBorder.top + m_WindowBorder.bottom);
+	}
+
+	public void setSeed(double X0)
+	{	m_LyapCalc.setSeed(X0);
+	}
+
+	public void setParameter(double p1, double p2)
+	{	m_LyapCalc.setParameter(p1, p2);
+	}
+
+	public void setSequence(String sequence)
+	{	m_LyapCalc.setSequence(sequence);
+	}
+
+	public void setUpperLeft(double A, double B)
+	{	m_LyapCalc.setUpperLeft(A, B);
+	}
+
+	public void setLowerLeft(double A, double B)
+	{	m_LyapCalc.setLowerLeft(A, B);
+	}
+	
+	public void setColorPalette(int palette)
+	{
+		if (palette == m_ColorPalette)
+			return;
+
+		m_ColorPalette = palette;
+		if (m_LyapCalc.getLyapExpo() != null) // <- avoid to repaint 
+			m_needRepaint = true;
+	}
+
+	private Color getLyapunovColor(double Lyap)
+	{
+		double r, g, b;
+
+		switch (m_ColorPalette)
+		{
+			case 4 :
+				if (Lyap > 2.0e-5)
+				{
+					r = 0.8*(1.0-Math.exp(-2.0 * Lyap));
+					g = 0.6*(1.0-Math.exp(-4.0 * Lyap));
+					b = 0.6*(1.0-Math.exp(-4.0 * Lyap));
+				}
+				else
+				{
+					r = 1.0 - Math.exp(1.0 * Lyap);
+					g = 1.0 - Math.exp(2.0 * Lyap);
+					b = 1.0 - 0.8 * Math.exp(2.0 * Lyap);
+				}
+				break;
+
+			case 3 :
+				if (Lyap > 2.0e-5)
+				{
+					r = 0;
+					g = 0;
+					b = 0.8 * Lyap;
+				}
+				else
+				{
+					r = 1.0 * Math.exp(2 * Lyap);
+					g = 1.0 * Math.exp(4 * Lyap);
+					b = 0;
+				}
+				break;
+
+			case 2 :
+				if (Lyap > 2.0e-5)
+				{
+					r = 0.7 * (1.0 - Math.exp(-2.0 * Lyap));
+					g = 0.7 * (1.0 - Math.exp(-2.0 * Lyap));
+					b = 0.7 * (1.0 - Math.exp(-2.0 * Lyap));
+				}
+				else
+				{
+					r = Math.exp(2.0 * Lyap);
+					g = Math.exp(2.0 * Lyap);
+					b = Math.exp(2.0 * Lyap);
+				}
+				break;
+			case 1 : // <- NO BUG!
+			default :
+				if (Lyap > 2.0e-5)
+				{
+					r = 0.7 * Math.exp(-3.0 * Lyap);
+					g = 0.7 * Math.exp(-3.0 * Lyap);
+					b = 0.7 * Math.exp(-3.0 * Lyap);
+				}
+				else
+				{
+					r = Math.exp(1.0 * Lyap);
+					g = Math.exp(2.0 * Lyap);
+					b = Math.exp(4.0 * Lyap);
+				}
+		}
+
+		if (r < 0)		  r = 0;
+		else if (r > 1.0) r = 1;
+		if (g < 0)		  g = 0;
+		else if (g > 1.0) g = 1;
+		if (b < 0)	      b = 0;
+		else if (b > 1.0) b = 1;
+
+		return new Color((float) r, (float) g, (float) b);
+	}
+
+
+
+	public int getFunctionHashCode()
+	{
+		return m_LyapCalc.getFunctionHashCode();
+	}
+
+
+	public BufferedImage getScreenshot()
+	{
+		BufferedImage screenshot = new BufferedImage(m_SizeX, m_SizeY, BufferedImage.TYPE_INT_RGB);
+		screenshot.getGraphics().drawImage(m_ScreenLyapunovImage, 0, 0, null);
+
+		return screenshot;
+	}
+
+
+
+	public void setControlWindowParameters()
+	{
+		m_LyapControlWindow.setAllCalcParameters(
+			m_LyapCalc.getUpperLeftA(),
+			m_LyapCalc.getUpperLeftB(),
+			m_LyapCalc.getLowerLeftA(),
+			m_LyapCalc.getLowerLeftB(),
+			m_LyapCalc.getSizeX(),
+			m_LyapCalc.getSizeY(),
+			m_LyapCalc.getSeed(),
+			m_LyapCalc.getSequence(),
+			m_LyapCalc.getAdditionalParameter1(),
+			m_LyapCalc.getAdditionalParameter2(),
+			m_LyapCalc.getFunctionText(),
+			m_LyapCalc.getDerivationText());
+		m_LyapControlWindow.setSaveButtonEnabled(!m_savedLyapCalc);
+		m_LyapControlWindow.printLog(m_LyapCalc.getStaticInfo() + "\n");
+	}
+
+	public void mouseClicked(MouseEvent e)
+	{
+	}
+	public void mouseDragged(MouseEvent e)
+	{
+	}
+	public void mouseEntered(MouseEvent e)
+	{
+	}
+	public void mouseExited(MouseEvent e)
+	{
+	}
+	public void mouseReleased(MouseEvent e)
+	{
+	}
+
+	public void mouseMoved(MouseEvent e)
+	{
+		if (m_ButtonCount < 1) return;
+
+		switch (m_ButtonCount)
+		{
+			case 1 :
+				m_P2_X = e.getX();
+				m_P2_Y = e.getY();
+				break;
+			case 2 :
+				m_P3_X = e.getX();
+				m_P3_Y = e.getY();
+				break;
+		}
+	}
+
+	public void mousePressed(MouseEvent e)
+	{
+		int x = convertXScreen2Lyap(e.getX()), y = convertYScreen2Lyap(e.getY());
+
+		double A = m_LyapCalc.getA(x, y), B = m_LyapCalc.getB(x, y);
+
+		switch (e.getButton())
+		{
+			case 1 :
+				if (m_needCalculation)
+					break;
+				m_ButtonCount = (m_ButtonCount++) % 3 + 1;
+
+				switch (m_ButtonCount)
+				{
+					case 1 :
+						m_P1_X = m_P2_X = e.getX();
+						m_P1_Y = m_P2_X = e.getY();
+
+						m_LyapControlWindow.setUpperLeft(A, B);
+						break;
+
+					case 2 :
+						m_P2_X = m_P3_X = e.getX();
+						m_P2_Y = m_P3_X = e.getY();
+
+						m_LyapControlWindow.setLowerLeft(A, B);
+						break;
+
+					case 3 :
+						m_P3_X = e.getX();
+						m_P3_Y = e.getY();
+						double LengthX, LengthY;
+
+						LengthY = (Math.sqrt((m_P2_X - m_P1_X) * (m_P2_X - m_P1_X) + (m_P2_Y - m_P1_Y) * (m_P2_Y - m_P1_Y)));
+
+						double dP31X = m_P1_X - m_P3_X, 
+							   dP31Y = m_P1_Y - m_P3_Y, 
+							   dP21X = m_P1_X - m_P2_X, 
+							   dP21Y = m_P1_Y - m_P2_Y;
+
+						double length = (-dP31X * dP21Y + dP31Y * dP21X) / (dP21X * dP21X + dP21Y * dP21Y);
+
+						double dX = (dP21Y * length);
+						double dY = - (dP21X * length);
+
+						LengthX = Math.sqrt(dX * dX + dY * dY);
+
+						double scale = Math.sqrt((double) m_SizeX * m_SizeY / ((double) LengthX * LengthY));
+
+						m_LyapControlWindow.setRaster((int) (scale * LengthX + 0.5), (int) (scale * LengthY + 0.5));
+						break;
+				}
+				break;
+
+			case 2 :
+
+				m_LyapControlWindow.printLog(m_LyapCalc.getPointInfo(x, y) + "\n");
+				break;
+
+			case 3 :
+				m_ButtonCount--;
+				if (m_ButtonCount < 0)
+					m_ButtonCount = 0;
+				break;
+
+		}
+	}
+	
+	
+	private int convertXLyap2Screen(int x)
+	{	return x + m_WindowBorder.left;
+	}
+
+	private int convertXScreen2Lyap(int x)
+	{	return x - m_WindowBorder.left;
+	}
+
+	private int convertYLyap2Screen(int y)
+	{	return m_SizeX - y + m_WindowBorder.top - 1;		// woher kommt die -1 ? Vielleicht GUI abh?ngig?
+	}
+
+	private int convertYScreen2Lyap(int y)
+	{	return m_SizeY - y + m_WindowBorder.top - 1;
+	}
+	
+	private void startAnimation() // ?berladene Methode aus java.lang.Runnable.
+	{
+		m_myThread = new Thread(this);
+		init();
+		m_myThread.setPriority(Thread.MIN_PRIORITY);
+		m_myThread.start();
+	}
+
+	public void update(Graphics g) // ?berladene Methode aus java.awt.Container
+	{
+		paint(g);
+	}
+
+}

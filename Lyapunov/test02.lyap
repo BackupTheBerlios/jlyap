@@ -1,0 +1,24 @@
+LyapKK 0.3 
+
+# More (and redundant) informations about the parameter plane would be nice for
+# documentation purposes, but this file is the wrong place. Please DO NOT EDIT
+# this file manually until you exactly know what you are doing.
+
+# Upper Left Corner
+UL 2.0 4.0
+# Lower Left Corner
+LL 2.0 2.0
+# Pixel resolution
+Pixel 500 500
+# Seed
+Seed 0.51
+# Sequence
+Sequence ab
+# Additional Parameter 
+AddPara 1.0 1.0
+# Function & derivation description
+FunctionText f(Xn)=Rn*Xn*(1.0-Xn)
+DerivationText f'(Xn)=Rn*(1.0-2.0*Xn)
+
+# Lyapunov function hash code, completely experimental feature...
+13177628

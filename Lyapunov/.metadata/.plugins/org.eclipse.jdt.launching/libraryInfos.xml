@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<libraryInfos>
+    <libraryInfo home="/opt/sun-jdk-1.4.2.05" version="1.4.2_05-b04">
+        <bootpath>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/rt.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/i18n.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/sunrsasign.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/jsse.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/jce.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/charsets.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/classes"/>
+        </bootpath>
+        <extensionDirs>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/ext"/>
+        </extensionDirs>
+        <endorsedDirs>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/endorsed"/>
+        </endorsedDirs>
+    </libraryInfo>
+    <libraryInfo home="/opt/sun-jdk-1.4.2.05/jre" version="1.4.2_05-b04">
+        <bootpath>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/rt.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/i18n.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/sunrsasign.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/jsse.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/jce.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/charsets.jar"/>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/classes"/>
+        </bootpath>
+        <extensionDirs>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/ext"/>
+        </extensionDirs>
+        <endorsedDirs>
+            <entry path="/opt/sun-jdk-1.4.2.05/jre/lib/endorsed"/>
+        </endorsedDirs>
+    </libraryInfo>
+</libraryInfos>

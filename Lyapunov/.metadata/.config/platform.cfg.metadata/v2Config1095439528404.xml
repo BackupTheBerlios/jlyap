@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- File written by Update manager 2.0 -->
+<!-- comments in this file are not preserved -->
+
+<configuration date="1095439528404" timeline="1095439528404" >
+   <site url="file:/usr/lib/eclipse-2/"
+      platformURL="platform:/base/"
+      enable="true"
+      policy="1" >
+      <feature configured = "true" url="features/org.eclipse.team.extras_2.1.0/" />
+      <feature configured = "true" url="features/org.eclipse.platform.linux.gtk.source_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.jdt_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.platform.linux.motif.source_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.platform.source_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.jdt.source_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.pde_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.platform.linux.gtk_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.platform.linux.motif_2.1.3/" />
+      <feature configured = "true" url="features/org.eclipse.platform_2.1.3/" />
+   </site>
+
+   <activity action="3" 
+      label="file:/usr/lib/eclipse-2/" 
+      date="1095439528934" 
+      status="0">
+   </activity>
+
+   <activity action="8" 
+      label="file:/home/koetter/workspace/.metadata/.config/platform.cfg.metadata/v2LocalSite.xml" 
+      date="1095439528938" 
+      status="0">
+   </activity>
+
+</configuration>
+

@@ -1,0 +1,43 @@
+- File Open/Save mit gewechselten directories implementieren (hint: fd.getDirectory()...)
+
+
+- setter Methoden zusammenfassen (in LyapRun und LyapCalc)
+	setPlaneParameters(ulA, ulB, llA, llB, PixelX, PixelY) 
+	setFunctionParameters(Seed, Sequence, addPara1, addPara2, ...)
+
+
+- Anstelle von Start/Stop deaktivieren, 'wait' anzeigen, Felder individuell aktivieren/deaktivieren, etc...
+	- Mauszeiger mit Sanduhrsymbol (anstelle von 'wait') im Kontrollfenster ( ...setCursor(Cursor.WAIT_CURSOR))
+	DONE 	- Mauszeiger mit Sanduhrsymbol w?hrend der Berechnung im Darstellungsfenster
+	- generell alles aktivieren/deaktivieren ('<', '>' seperat wenn alles aktiviert)
+	DONE	- Darstellungsfenster mit ...setCursor(Cursor.CROSSHAIR_CURSOR))
+
+
+- 'Advanced options' implementieren
+	- 'klassisches' Iterationsverhalten
+
+
+- 'Customize color pallette'
+	- zu Beginn ColorPallette(Lyapunov) setzen und nicht bei jedem paint (geht das?)
+	- 4 Kan?le RGBA (A d?rfte interessant sein)
+	- 4 Werte pro Kanal aus [0,1]
+		Wert bei Min(Lyapunov)
+		Wert bei '-Null' ('Null' sei ver?nderbar)
+		Wert bei '+Null' ('Null' sei ver?nderbar)
+		Wert bei Max(Lyapunov)
+	- linearer Farbverlauf (eventuell ?nderbar?)
+
+
+- Ouput Log vereinfachen
+	- Standardm?ssig nur Info ?ber Iterationsfortschritt
+	DONE	- 'Rest' in einen LogString schreiben, der bei Bedarf in einem eigenen Fenster dargestellt wird ('Options' -> 'display Log')
+
+
+- 'Options' -> 'Reset' -> 'Plane Parameters'
+- 'Options' -> 'Reset' -> 'Function Parameters'
+- 'Options' -> 'Reset' -> 'Cache'
+	 
+
+- In Parameterdatei (da Source oder HashCode nicht funktioniert)
+  	- Funktions- und Ableitungswerte f?r Funktionsparameter und einige Punkte in der Parameterebene speichern
+	- LyapFunction.class (.java) ans Paramterfile anh?ngen
